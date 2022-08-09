@@ -1,13 +1,13 @@
 #!/usr/bin/env python
+import os
+import sys
+import argparse
 import struct
 import hashlib
 import bz2
-import sys
-import argparse
-import io
-import os
-from enlighten import get_manager
 import lzma
+from enlighten import get_manager
+from google.protobuf.json_format import MessageToJson
 import update_metadata_pb2 as um
 
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -16,10 +16,8 @@ flatten = lambda l: [item for sublist in l for item in sublist]
 def u32(x):
     return struct.unpack(">I", x)[0]
 
-
 def u64(x):
     return struct.unpack(">Q", x)[0]
-
 
 def verify_contiguous(exts):
     blocks = 0
@@ -30,7 +28,6 @@ def verify_contiguous(exts):
         blocks += ext.num_blocks
 
     return True
-
 
 class Dumper:
     def __init__(self, payloadfile, out, images="", list=False):
@@ -45,6 +42,7 @@ class Dumper:
         if self.list:
             for part in self.dam.partitions:
                 print("name: {}\tsha256: {}".format(part.partition_name.ljust(16), part.new_partition_info.hash.hex()))
+            print(self.dpm)
         elif self.images == "":
             progress = self.manager.counter(
                 total=len(self.dam.partitions),
@@ -96,6 +94,7 @@ class Dumper:
 
         self.dam = um.DeltaArchiveManifest()
         self.dam.ParseFromString(manifest)
+        self.dpm = MessageToJson(self.dam.dynamic_partition_metadata)
         self.block_size = self.dam.block_size
 
     def data_for_op(self, op, out_file):
@@ -141,7 +140,6 @@ class Dumper:
             operation_progress.update()
         operation_progress.close()
 
-
 def main():
     parser = argparse.ArgumentParser(description="Full OTA payload dumper")
     parser.add_argument(
@@ -164,7 +162,6 @@ def main():
 
     dumper = Dumper(args.payloadfile, args.out, images=args.partitions, list=args.list)
     dumper.run()
-
 
 if __name__ == "__main__":
     main()
